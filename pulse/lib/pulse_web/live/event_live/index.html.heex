@@ -1,0 +1,19 @@
+<div class="p-8">
+  <h1 class="text-2xl font-bold mb-4">Pulse: Real-Time Event Stream</h1>
+  
+  <div class="bg-gray-900 text-white font-mono rounded-lg p-4 h-96 overflow-y-auto flex flex-col-reverse">
+    <div id="event-stream">
+      <p :if={@events == []} class="text-gray-500">
+        Waiting for events... Send a POST request to /api/ingest
+      </p>
+      
+      <.table id="events" rows={@events}>
+        <:col :let={event} label="Level">{event["level"]}</:col>
+        
+        <:col :let={event} label="Message">{event["message"]}</:col>
+        
+        <:col :let={event} label="User ID">{event["user_id"]}</:col>
+      </.table>
+    </div>
+  </div>
+</div>
