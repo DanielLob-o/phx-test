@@ -9,18 +9,33 @@ defmodule PulseWeb.EventLive.Index do
     if connected?(socket), do: Phoenix.PubSub.subscribe(Pulse.PubSub, "events")
 
     # 2. Initialize the page with an empty list of events.
-    socket = assign(socket, :events, [])
+    # Initialize an empty stream for events and set an empty state assign.
+    # Streams are the idiomatic way to handle collections in LiveView.
+    socket =
+      socket
+      |> stream(:events, [])
+      |> assign(:events_empty?, true)
+
     {:ok, socket}
   end
 
   # 3. This is the event handler. It fires when a message we subscribed to is received.
   @impl true
-  def handle_info(%{event: "new_event", payload: new_event}, socket) do
-    # Add the new event to the beginning of our list of events.
-    updated_events = [new_event | socket.assigns.events]
+  def handle_info(%{event: "new_event", payload: new_event_params}, socket) do
+# 1. Convert string keys in the payload to atom keys.
+    event_data =
+      Enum.into(new_event_params, %{}, fn {key, value} -> {String.to_atom(key), value} end)
 
-    # Put the updated list back into the socket and Phoenix re-renders the page.
-    socket = assign(socket, :events, updated_events)
+    # 2. Add the unique :id atom key required for the stream.
+    event_with_id = Map.put(event_data, :id, "event-#{System.unique_integer([:positive])}")
+
+    # Insert the new event at the top of the stream.
+    # We also update our empty? assign.
+    socket =
+      socket
+      |> stream_insert(:events, event_with_id, at: 0)
+      |> assign(:events_empty?, false)
+
     {:noreply, socket}
   end
 

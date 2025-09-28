@@ -1,19 +1,79 @@
-<div class="p-8">
-  <h1 class="text-2xl font-bold mb-4">Pulse: Real-Time Event Stream</h1>
-  
-  <div class="bg-gray-900 text-white font-mono rounded-lg p-4 h-96 overflow-y-auto flex flex-col-reverse">
-    <div id="event-stream">
-      <p :if={@events == []} class="text-gray-500">
-        Waiting for events... Send a POST request to /api/ingest
-      </p>
-      
-      <.table id="events" rows={@events}>
-        <:col :let={event} label="Level">{event["level"]}</:col>
-        
-        <:col :let={event} label="Message">{event["message"]}</:col>
-        
-        <:col :let={event} label="User ID">{event["user_id"]}</:col>
-      </.table>
+<Layouts.app flash={@flash}>
+  <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Real-Time Event Stream
+        </h1>
+        <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">
+          Monitoring your application events as they happen.
+        </p>
+      </div>
+      <div class="flex-shrink-0">
+        <span class="inline-flex items-center gap-x-1.5 rounded-md bg-green-100 dark:bg-green-900 px-2 py-1 text-sm font-medium text-green-700 dark:text-green-300">
+          <svg class="h-1.5 w-1.5 fill-green-500" viewBox="0 0 6 6" aria-hidden="true">
+            <circle cx="3" cy="3" r="3" />
+          </svg>
+          Live
+        </span>
+      </div>
     </div>
+
+      <%!-- Empty State Handling --%>
+      <%= if @events_empty? do %>
+        <div class="text-center py-16 px-6 bg-white dark:bg-gray-800/50 rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+          <.icon name="hero-arrow-path" class="mx-auto h-12 w-12 text-gray-400" />
+          <h3 class="mt-2 text-xl font-semibold text-gray-900 dark:text-white">Waiting for events...</h3>
+          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Send a POST request to the ingest endpoint to see events here.</p>
+          <div class="mt-6">
+            <code phx-no-curly-interpolation class="block text-left text-sm bg-gray-100 dark:bg-gray-900 p-4 rounded-md text-gray-700 dark:text-gray-300 overflow-x-auto">
+              curl -X POST -H "Content-Type: application/json" \<br>
+              -d '{"level": "info", "message": "User signed up", "user_id": "123"}' \<br>
+              <%= PulseWeb.Endpoint.url() %>/api/ingest
+            </code>
+          </div>
+        </div>
+      <% else %>
+        <%!--
+          This is the container for our stream.
+          - `id="events"` matches the stream name in the LiveView.
+          - `phx-update="stream"` tells Phoenix this container is managed by a stream.
+        --%>
+
+        <div id="events" phx-update="stream" class="space-y-4 font-mono">
+          <%!--
+            The for-comprehension now iterates over `@streams.events`.
+            - `dom_id` is the unique DOM ID for the element, managed by Phoenix.
+            - `event` is the event data we streamed from the backend.
+            - Each streamed element MUST have an `id={dom_id}` attribute.
+          --%>
+          <div
+            :for={{dom_id, event} <- @streams.events}
+            id={dom_id}
+            class="bg-white dark:bg-gray-800/50 p-4 rounded-lg shadow-sm ring-1 ring-black/5 dark:ring-white/10 flex items-start gap-4 transition-all animate-fade-in-down"
+          >
+            <span
+              class={[
+                "font-semibold text-xs uppercase leading-6 rounded-md px-2 py-0.5",
+                event.level == "error" && "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
+                event.level == "warn" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-800/50 dark:text-yellow-300",
+                event.level in ["info", nil] && "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300"
+              ]}
+            >
+              {event.level || "info"}
+            </span>
+            <div class="flex-1">
+              <p class="text-sm text-gray-800 dark:text-gray-200">{event.message}</p>
+              <p :if={event.user_id} class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                User ID: {event.user_id}
+              </p>
+            </div>
+            <time class="text-xs text-gray-400 dark:text-gray-500">
+              {NaiveDateTime.utc_now() |> Calendar.strftime("%H:%M:%S")}
+            </time>
+          </div>
+        </div>
+      <% end %>
+
   </div>
-</div>
+</Layouts.app>
